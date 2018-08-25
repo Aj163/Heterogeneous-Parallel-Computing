@@ -1,5 +1,5 @@
 # Heterogeneous-Parallel-Computing
-This repository contains CUDA files which make use of Heterogeneous Parallel Computing
+This repository contains CUDA files which make use of Heterogeneous Parallel Computing on NVIDIA GPUs
 
 To compile:
 
