@@ -65,7 +65,7 @@ int main() {
 	cudaEventSynchronize(stop);
 
 	cudaEventElapsedTime(&tims, start, stop);
-	printf("Device Time : %0.2lf ms\n", tims);
+	printf("\nDevice Time : %0.2lf ms\n", tims);
 
 	cudaMemcpy(h_sum, d_sum, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -77,7 +77,7 @@ int main() {
 	for(int i=0; i<N; i++)
 		sum += h_a[i];
 	tim = clock() - tim;
-	printf("\nHost Time   : %0.2lf ms\n", tim*1.0/CLOCKS_PER_SEC*1000.0);
+	printf("Host Time   : %0.2lf ms\n", tim*1.0/CLOCKS_PER_SEC*1000.0);
 
 	printf("\nDevice sum  : %d\nHost sum    : %d\n\n", *h_sum, sum);
 
