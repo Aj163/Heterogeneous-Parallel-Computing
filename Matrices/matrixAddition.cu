@@ -14,6 +14,23 @@ __global__ void add(int *d_a, int *d_b, int *d_c) {
 		d_c[x*N + y] = d_b[x*N + y] + d_a[x*N + y];
 }
 
+template <class T>
+void testSolution(T *h_a, T *h_b, T *h_c, float precision=0.0) {
+
+	int errors = 0;
+	for(int i=0; i<N; i++)
+		if(abs(h_c[i] - h_a[i] - h_b[i]) > precision) {
+			errors++;
+			if(errors <= 10)
+				printf("Test failed at index : %d\n", i);
+		}
+
+	if(errors)
+		printf("\n%d Tests failed!\n\n", errors);
+	else
+		printf("All tests passed !\n\n");
+}
+
 int main() {
 
 	int *h_a, *h_b, *h_c;
@@ -57,19 +74,7 @@ int main() {
 	cudaFree(d_b);
 	cudaFree(d_c);
 
-	int errors = 0;
-	for(int i=0; i<N; i++)
-		for(int j=0; j<N; j++)
-			if(h_c[i*N + j] != h_a[i*N + j] + h_b[i*N + j]) {
-				errors++;
-				if(errors <= 10)
-					printf("Test failed at (%d, %d)\n", i, j);
-			}
-
-	if(errors)
-		printf("\n%d Tests failed!\n\n", errors);
-	else
-		printf("All tests passed !\n\n");	
+	testSolution(h_a, h_b, h_c, 1e-6);	
 
 	// Free host memory
 	delete[] h_a, h_b, h_c;
