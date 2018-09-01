@@ -3,6 +3,7 @@
 using namespace std;
 
 #define N ((int)1e3)
+#define TILE 32
 #define CEIL(a, b) ((a-1)/b +1)
 
 __global__ void multiply(float *d_a, float *d_b, float *d_c) {
@@ -10,13 +11,36 @@ __global__ void multiply(float *d_a, float *d_b, float *d_c) {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
 
-	if(x >= N || y >= N)
-		return;
+	__shared__ float a[TILE][TILE];
+	__shared__ float b[TILE][TILE];
 
-	float cij=0.0;
-	for(int k=0; k<N; k++)
-		cij += d_a[x*N + k] * d_b[k*N + y];
-	d_c[x*N + y] = cij;
+	float cij = 0.0;
+	for(int k=0; k<CEIL(N, TILE); k++) {
+		// Copy the kth tile on the horizontal strip from A
+		if(x<N && TILE*k + threadIdx.y < N)
+			a[threadIdx.x][threadIdx.y] = d_a[x*N + TILE*k + threadIdx.y];
+		else
+			a[threadIdx.x][threadIdx.y] = 0.0;
+
+		// Copy the kth tile on the vertical strip from B
+		if(y<N && TILE*k + threadIdx.x < N)
+			b[threadIdx.x][threadIdx.y] = d_b[(TILE*k + threadIdx.x)*N + y];
+		else
+			b[threadIdx.x][threadIdx.y] = 0.0;
+
+		// Wait for all elements to be copied
+		__syncthreads();
+
+		// Do all operations related to these tiles before moving to next tile
+		for(int kk=0; kk<TILE; kk++)
+			cij += a[threadIdx.x][kk] * b[kk][threadIdx.y];
+
+		// Wait before copying next tile
+		__syncthreads();
+	}
+
+	if(x < N && y < N)
+		d_c[x*N + y] = cij;
 }
 
 template <class T>
