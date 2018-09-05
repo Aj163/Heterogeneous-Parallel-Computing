@@ -7,7 +7,7 @@ using namespace std;
 #define value(arry, i, j, k) (arry[((i)*width + (j)) * depth + (k)])
 #define output(i, j, k) value(output, i, j, k)
 #define input(i, j, k) value(input, i, j, k)
-#define data(i, j, k) value(data, i, j, k)
+#define data(i, j, k) data[i*121 + j*11 + k]
 
 #define wbCheck(stmt)                                                           \
     do {                                                                        \
@@ -25,11 +25,48 @@ __global__ void stencil(float *output, float *input, int width, int height, int 
     int j = blockDim.y * blockIdx.y + threadIdx.y;
     int k = blockDim.z * blockIdx.z + threadIdx.z;
 
-    if(i < 1 || i >= height -1 || j < 1 || j >= width -1 || k < 1 || k >= depth -1)
-        return;
+    int bi = blockDim.x * blockIdx.x;
+    int bj = blockDim.y * blockIdx.y;
+    int bk = blockDim.z * blockIdx.z;
 
-    float res = input(i, j, k + 1) + input(i, j, k - 1) + input(i, j + 1, k) +
-        input(i, j - 1, k) + input(i + 1, j, k) + input(i - 1, j, k) - 6 * input(i, j, k);
+    int x = threadIdx.x;
+    int y = threadIdx.y;
+    int z = threadIdx.z;
+
+    __shared__ float data[11*11*11];
+
+    if(i < height && j < width && k < depth) {
+        data(x+1, y+1, z+1) = input(i, j, k);
+
+        // Z border
+        if(bk -1 >= 0)
+            data(x, y, 0) = input(i, j, bk -1);
+        if(bk + blockDim.z < depth)
+            data(x, y, 10) = input(i, j, bk + blockDim.z);
+
+        // Y border
+        if(bj -1 >= 0)
+            data(x, 0, z) = input(i, bj -1, k);
+        if(bj + blockDim.y < width)
+            data(x, 10, z) = input(i, bj + blockDim.y, k);
+
+        // X border
+        if(bi -1 >= 0)
+            data(0, y, z) = input(bi -1, j, k);
+        if(bi + blockDim.x < height)
+            data(10, y, z) = input(bi + blockDim.x, j, k);
+
+    }
+
+    __syncthreads();
+
+
+    if(i < 1 || i >= height -1 || j < 1 || j >= width -1 || k < 1 || k >= depth -1) {
+        return;
+    }
+
+    float res = data(x, y, z + 1) + data(x, y, z - 1) + data(x, y + 1, z) +
+        data(x, y - 1, z) + data(x + 1, y, z) + data(x - 1, y, z) - 6 * data(x, y, z);
     res = Clamp(res, 0.0, 1.0);
     output(i, j, k) = res;
 }
@@ -74,7 +111,7 @@ int main(int argc, char *argv[]) {
     wbTime_stop(GPU, "Doing GPU memory allocation");
 
     wbTime_start(Copy, "Copying data to the GPU");
-    cudaMemcpy(deviceInputData, hostInputData,width * height * depth * sizeof(float),
+    cudaMemcpy(deviceInputData, hostInputData, width * height * depth * sizeof(float),
         cudaMemcpyHostToDevice);
     wbTime_stop(Copy, "Copying data to the GPU");
 

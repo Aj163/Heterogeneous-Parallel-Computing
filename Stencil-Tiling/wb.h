@@ -1099,7 +1099,7 @@ void wbSolution(const wbArg_t& args, const wbImage_t& image)
             {
                 for (int k = 0; k < image.channels; ++k)
                 {
-                    const int index = (j * image.width) + i * image.channels + k;
+                    const int index = (j * image.width + i) * image.channels + k;
                     const float error = fabs(solnImage.data[index] - image.data[index]);
 
                     if (error > (1.0f / wbInternal::kImageColorLimit * tolerance))
